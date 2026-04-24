@@ -17,10 +17,6 @@ dataset/processed_windows/
 models/vae_runs/*
 !models/vae_runs/.gitkeep
 
-# Report figures (generated images — commit CSVs, not figures)
-reports/figures/*
-!reports/figures/.gitkeep
-
 # Temporary files
 *.log
 *.tmp

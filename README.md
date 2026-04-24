@@ -57,6 +57,14 @@ python scripts/train_vae.py --config configs/experiments/dense_window60_beta1_no
 python scripts/evaluate_thresholds.py --run-dir models/vae_runs/<run_id>
 ```
 
+**Generate analysis figures** (score distributions, baselines, time-series):
+
+```bash
+python scripts/plot_analysis.py
+```
+
+Figures are saved as PDF + PNG to `reports/figures/`. Pass `--run-dir`, `--split-dir`, `--windows-dir` to target a different run.
+
 Or run the full pipeline in one command:
 
 ```bash
@@ -88,8 +96,9 @@ Saved run: `models/vae_runs/20260424_140621` (excluded from git — see `reports
 
 ```
 configs/           JSON configs for data splits, features, and experiments
-scripts/           Pipeline entry points (preprocess → build_windows → train_vae → evaluate)
+scripts/           Pipeline entry points (preprocess → build_windows → train_vae → evaluate → plot_analysis)
 src/               Core modules: preprocessing, feature engineering, VAE model, metrics
+reports/figures/   Publication-ready figures (PDF + PNG) from plot_analysis.py
 reports/tables/    Saved metric CSVs from evaluated runs
 notes/             Project notes and current state
 archive/           Old notebooks and historical runs kept for reference
