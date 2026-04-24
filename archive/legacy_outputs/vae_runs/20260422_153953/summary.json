@@ -1,0 +1,60 @@
+{
+  "run_id": "20260422_153953",
+  "source_processed_windows_run": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/dataset/processed_windows/20260422_144602",
+  "vae_config": {
+    "latent_dim": 16,
+    "architecture": "dense",
+    "conv_filters": [
+      32,
+      64
+    ],
+    "kernel_size": 3,
+    "hidden_units": [
+      64,
+      32
+    ],
+    "lstm_units": [
+      64,
+      32
+    ],
+    "encoder_use_batchnorm": false,
+    "encoder_dropout_rate": 0.2
+  },
+  "train_config": {
+    "epochs": 10,
+    "batch_size": 512,
+    "learning_rate": 0.001,
+    "beta": 0,
+    "validation_split": 0,
+    "gradient_clipnorm": 1.0,
+    "random_seed": 2,
+    "verbose_epoch": true
+  },
+  "threshold_config": {
+    "method": "val_f1",
+    "percentile": 95.0,
+    "std_factor": 3.0
+  },
+  "threshold": 12.697237408700301,
+  "train_samples": 63526,
+  "test_samples": 43910,
+  "metrics": {
+    "accuracy": 0.7122295604645866,
+    "precision": 0.065242026873887,
+    "recall": 0.42555438225976766,
+    "f1": 0.11313868613138688,
+    "tp": 806,
+    "tn": 30468,
+    "fp": 11548,
+    "fn": 1088
+  },
+  "saved_files": {
+    "encoder": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260422_153953/encoder.keras",
+    "decoder": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260422_153953/decoder.keras",
+    "history": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260422_153953/history.csv",
+    "train_scores": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260422_153953/train_scores.npy",
+    "test_scores": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260422_153953/test_scores.npy",
+    "train_predictions": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260422_153953/train_predictions.npy",
+    "test_predictions": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260422_153953/test_predictions.npy"
+  }
+}

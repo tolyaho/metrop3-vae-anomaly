@@ -1,0 +1,41 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Local environments
+.venv/
+venv/
+env/
+
+# Raw and derived data (too large)
+dataset/raw/
+dataset/preprocessed/
+dataset/processed_windows/
+
+# Model artifacts (too large — see reports/tables/ for metrics)
+models/vae_runs/*
+!models/vae_runs/.gitkeep
+
+# Report figures (generated images — commit CSVs, not figures)
+reports/figures/*
+!reports/figures/.gitkeep
+
+# Temporary files
+*.log
+*.tmp
+
+# Internal agent planning docs
+notes/agent_pack/
+
+# Claude Code internal
+.claude/
+
+# Intermediate/failed experiment configs (kept locally for reference)
+configs/experiments/*noscale_30ep.json
+configs/experiments/*noscale_archive*.json
+configs/experiments/*noscale_bn.json
+configs/experiments/*noscale_p98.json
+configs/experiments/*noscale_small.json
+configs/experiments/*betawarmup*.json
+configs/experiments/conv1d*noscale.json

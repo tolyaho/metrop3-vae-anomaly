@@ -1,0 +1,32 @@
+{
+  "processed_windows_root": "dataset/processed_windows",
+  "window_run_name": "latest",
+  "model_output_root": "models/vae_runs",
+  "vae_config": {
+    "architecture": "dense",
+    "latent_dim": 8,
+    "hidden_units": [32, 16],
+    "encoder_use_batchnorm": false,
+    "encoder_dropout_rate": 0.0
+  },
+  "train_config": {
+    "epochs": 1,
+    "batch_size": 256,
+    "learning_rate": 0.001,
+    "beta": 0,
+    "validation_split": 0,
+    "gradient_clipnorm": 1.0,
+    "random_seed": 7,
+    "verbose_epoch": true
+  },
+  "threshold_config": {
+    "method": "val_f1",
+    "percentile": 95.0,
+    "std_factor": 3.0
+  },
+  "caps": {
+    "max_train_windows": 4096,
+    "max_val_windows": 2048,
+    "max_test_windows": 2048
+  }
+}

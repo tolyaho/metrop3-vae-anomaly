@@ -1,0 +1,57 @@
+{
+  "run_id": "20260421_235131",
+  "source_processed_windows_run": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/dataset/processed_windows/20260421_234700",
+  "vae_config": {
+    "latent_dim": 16,
+    "architecture": "dense",
+    "conv_filters": [
+      16,
+      32,
+      64
+    ],
+    "kernel_size": 3,
+    "hidden_units": [
+      64,
+      32
+    ],
+    "lstm_units": [
+      64,
+      32
+    ]
+  },
+  "train_config": {
+    "epochs": 20,
+    "batch_size": 512,
+    "learning_rate": 0.001,
+    "beta": 0,
+    "validation_split": 0,
+    "random_seed": 42
+  },
+  "threshold_config": {
+    "method": "val_f1",
+    "percentile": 95.0,
+    "std_factor": 3.0
+  },
+  "threshold": 768.6321105957031,
+  "train_samples": 63526,
+  "test_samples": 43910,
+  "metrics": {
+    "accuracy": 0.8966977909360054,
+    "precision": 0.28762919896640826,
+    "recall": 0.934417628541448,
+    "f1": 0.43986169424549276,
+    "tp": 1781,
+    "tn": 37593,
+    "fp": 4411,
+    "fn": 125
+  },
+  "saved_files": {
+    "encoder": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260421_235131/encoder.keras",
+    "decoder": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260421_235131/decoder.keras",
+    "history": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260421_235131/history.csv",
+    "train_scores": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260421_235131/train_scores.npy",
+    "test_scores": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260421_235131/test_scores.npy",
+    "train_predictions": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260421_235131/train_predictions.npy",
+    "test_predictions": "/Users/Leviathan/Downloads/DDA4210/vae-anomaly-detector/models/vae_runs/20260421_235131/test_predictions.npy"
+  }
+}
