@@ -29,7 +29,7 @@ Validation-label thresholds are kept only as diagnostics.
 
 | Model | Run | Precision | Recall | F1 | ROC-AUC | PR-AUC |
 |---|---|---:|---:|---:|---:|---:|
-| VAE | `20260424_140621` | 0.716 | 0.963 | 0.821 | 0.988 | 0.762 |
+| VAE | `20260426_232627` | 0.903 | 0.863 | 0.883 | 0.996 | 0.859 |
 | Isolation Forest | `20260426_200420` | 0.496 | 0.994 | 0.661 | 0.996 | 0.836 |
 
 ## Notes

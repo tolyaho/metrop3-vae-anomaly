@@ -58,10 +58,11 @@ archive/notebooks_old/*.ipynb
 # Generated report figures. Keep only selected final images in Git.
 reports/figures/**
 !reports/figures/
-!reports/figures/baselines/**
-!reports/figures/baselines/
 !reports/figures/layer_comparison_auc_train_p98.png
 !reports/figures/final_model_comparison.png
+!reports/figures/baselines/
+!reports/figures/baselines/baseline_comparison_latest.png
+!reports/figures/vae_latent_space_20260426_232627_test_pca.png
 !reports/figures/vae_latent_space_20260424_174443_test_pca.png
 !reports/figures/vae_latent_space_20260424_174443_test_tsne.png
 !reports/figures/vae_latent_space_20260424_140621_test_pca.png
@@ -79,6 +80,7 @@ outputs/*
 # Local agent/tool state
 .claude/
 notes/agent_pack/
+summary.md
 
 # Local-only exploratory configs kept for reference
 configs/experiments/*noscale_30ep.json

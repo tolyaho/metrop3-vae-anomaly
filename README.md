@@ -65,16 +65,16 @@ training windows.
 
 ## Results
 
-Primary test-set comparison at `train_p98`:
+Primary test-set comparison at `train_p98` using the best grid VAE:
 
 | Model | Precision | Recall | F1 | ROC-AUC | PR-AUC |
 |---|---:|---:|---:|---:|---:|
-| VAE `20260424_140621` | 0.716 | 0.963 | 0.821 | 0.988 | 0.762 |
+| VAE `20260426_232627` | 0.903 | 0.863 | 0.883 | 0.996 | 0.859 |
 | Isolation Forest `20260426_200420` | 0.496 | 0.994 | 0.661 | 0.996 | 0.836 |
 
-The Isolation Forest has slightly higher ranking metrics, but at the fixed
-train-only threshold it produces many more false positives. The VAE gives the
-better F1 score under the same threshold rule.
+The VAE gives the better F1 score under the same train-only threshold rule by
+substantially reducing false positives. Isolation Forest reaches higher recall
+but predicts many more normal windows as anomalous.
 
 The wrap-up grid also retrains VAE variants over layer sizes and window sizes.
 The best fresh grid run was `layers_128_64_32`:
@@ -130,7 +130,7 @@ python scripts/train_isolation_forest.py \
   --config configs/baselines/isolation_forest_window60_noscale.json
 
 python scripts/compare_baselines.py \
-  --vae-run-dir models/vae_runs/20260424_140621 \
+  --vae-run-dir models/vae_grid_runs/20260426_230603_wrapup_layers_windows_noscale_beta1/runs/layers/layers_128_64_32/20260426_232627 \
   --if-run-dir models/baseline_runs/isolation_forest/<run_id>
 ```
 
