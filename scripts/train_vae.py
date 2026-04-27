@@ -10,7 +10,7 @@ import numpy as np
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.append(str(PROJECT_ROOT / "src"))
+sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def _resolve(path: str | Path) -> Path:
@@ -38,7 +38,7 @@ def _git_commit() -> str | None:
 
 
 def _select_window_run(root: Path, name: str) -> Path:
-    from vae_anomaly_detector import find_latest_processed_window_run, find_processed_window_run_by_name
+    from src.models.vae_anomaly_detector import find_latest_processed_window_run, find_processed_window_run_by_name
 
     if name == "latest":
         return find_latest_processed_window_run(root, require_val=True)
@@ -56,7 +56,7 @@ def main() -> None:
     parser.add_argument("--config", default="configs/experiments/dense_point_beta0.json", help="Experiment JSON config.")
     args = parser.parse_args()
 
-    from vae_anomaly_detector import (
+    from src.models.vae_anomaly_detector import (
         ThresholdConfig,
         TrainConfig,
         VAEConfig,

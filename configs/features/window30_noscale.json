@@ -1,0 +1,18 @@
+{
+  "preprocessed_root": "dataset/preprocessed",
+  "split_run_name": "20260424_005227",
+  "output_root": "dataset/processed_windows",
+  "timestamp_col": "timestamp",
+  "label_col": "failure_label",
+  "train_normal_only": true,
+  "feature_cols": [],
+  "point_mode": false,
+  "window_size": 30,
+  "stride": 5,
+  "flatten_windows": true,
+  "window_label_strategy": "last",
+  "window_label_positive_ratio": 0.01,
+  "window_label_last_percent": 10.0,
+  "scale_features": false,
+  "scaler_type": "standard"
+}

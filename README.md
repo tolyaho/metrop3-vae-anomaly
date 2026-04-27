@@ -1,8 +1,19 @@
-# VAE Anomaly Detection — MetroPT3
+# VAE Anomaly Detection on MetroPT3
 
-DDA4210 course project. We train a VAE on **normal** air-compressor behavior and use reconstruction error to detect air-leak failures. No failure examples are seen during training.
+DDA4210 course research project. The goal is to detect MetroPT3 air-compressor
+air-leak failures by training a reconstruction model on normal operating windows
+only. At inference time, reconstruction error is used as the anomaly score.
 
----
+The final comparison uses a fair classical unsupervised baseline
+(Isolation Forest) and a VAE experiment grid over layer sizes and window sizes.
+
+## Project Claim
+
+A VAE trained on normal compressor behavior can flag later air-leak failures
+without seeing failure examples during model training. The main fair threshold is
+`train_p98`, the 98th percentile of training anomaly scores.
+
+Validation-label thresholds such as `val_f1` are saved for diagnostics only.
 
 ## Setup
 
@@ -10,62 +21,53 @@ DDA4210 course project. We train a VAE on **normal** air-compressor behavior and
 pip install -r requirements.txt
 ```
 
-Download the [MetroPT3 dataset](https://archive.ics.uci.edu/dataset/791/metropt+3+dataset) and place under `dataset/raw/`:
+Download the UCI MetroPT3 dataset and place it under `dataset/raw/`:
 
-```
+```text
 dataset/raw/MetroPT3(AirCompressor).csv
 dataset/raw/Data Description_Metro.pdf
 ```
 
----
+Raw and processed data are intentionally ignored by Git. See
+[dataset/README.md](dataset/README.md).
 
-## Data split
+## Data Split
 
-| Split | Period | Contains |
-|-------|--------|----------|
-| Train | Feb–May 2020 | Normal only (F1 windows filtered out) |
-| Val | May–Jun 2020 | F2 air-leak |
-| Test | Jun–Aug 2020 | F3, F4 air-leaks |
+| Split | Period | Purpose |
+|---|---|---|
+| Train | Feb-Apr 2020 | Normal-only VAE/IF fitting; F1-overlapping windows filtered |
+| Validation | May 2020 | F2 labels for diagnostics and threshold analysis |
+| Test | Jun-Jul 2020 | Held-out F3/F4 failure evaluation |
 
-Four labeled failure events: F1 (Apr 18), F2 (May 29–30), F3 (Jun 5–7), F4 (Jul 15).
+Failure intervals: F1 (Apr 18), F2 (May 29-30), F3 (Jun 5-7), F4 (Jul 15).
 
----
+## Main Pipeline
 
-## Running the pipeline
-
-**Step 1 — Preprocess** (label rows, create splits):
+Preprocess:
 
 ```bash
 python scripts/preprocess.py --config configs/data/archive_like_window60.json
 ```
 
-**Step 2 — Build windows** (unscaled, 60-step sliding windows):
+Build raw, unscaled windows:
 
 ```bash
 python scripts/build_windows.py --config configs/features/window60_noscale.json
 ```
 
-**Step 3 — Train + evaluate**:
+Train the main VAE:
 
 ```bash
 python scripts/train_vae.py --config configs/experiments/dense_window60_beta1_noscale_final.json
 ```
 
-**Evaluate with multiple threshold strategies** on a saved run:
+Evaluate additional thresholds:
 
 ```bash
 python scripts/evaluate_thresholds.py --run-dir models/vae_runs/<run_id>
 ```
 
-**Generate analysis figures** (score distributions, baselines, time-series):
-
-```bash
-python scripts/plot_analysis.py
-```
-
-Figures are saved as PDF + PNG to `reports/figures/`. Pass `--run-dir`, `--split-dir`, `--windows-dir` to target a different run.
-
-Or run the full pipeline in one command:
+Run the full main pipeline:
 
 ```bash
 python scripts/run_experiment.py \
@@ -74,44 +76,84 @@ python scripts/run_experiment.py \
   --experiment-config configs/experiments/dense_window60_beta1_noscale_final.json
 ```
 
----
+## Fair Baseline
 
-## Best results
+The final classical baseline is Isolation Forest trained only on the same
+normal-only training windows as the VAE.
 
-Model: Dense VAE — hidden `[128, 64]`, latent dim 16, β=1.0, 20 epochs, seed 42, **unscaled** input, window size 60 / stride 10.
+```bash
+python scripts/train_isolation_forest.py \
+  --config configs/baselines/isolation_forest_window60_noscale.json
 
-| Threshold | Precision | Recall | F1 | ROC-AUC |
-|-----------|-----------|--------|----|---------|
-| val_f1 | 0.793 | 0.791 | 0.792 | 0.988 |
-| **train_p98** | **0.716** | **0.963** | **0.821** | **0.988** |
-| Archive best (val_f1) | 0.895 | 0.740 | 0.811 | — |
-
-**train_p98** = 98th percentile of training reconstruction errors (no validation labels used). Equivalent to a 2 % nominal false-alarm rate on training data.
-
-Saved run: `models/vae_runs/20260424_140621` (excluded from git — see `reports/tables/` for metric CSVs).
-
----
-
-## Repository layout
-
-```
-configs/           JSON configs for data splits, features, and experiments
-scripts/           Pipeline entry points (preprocess → build_windows → train_vae → evaluate → plot_analysis)
-src/               Core modules: preprocessing, feature engineering, VAE model, metrics
-reports/figures/   Publication-ready figures (PDF + PNG) from plot_analysis.py
-reports/tables/    Saved metric CSVs from evaluated runs
-notes/             Project notes and current state
-archive/           Old notebooks and historical runs kept for reference
-dataset/           Raw data (not committed) and derived splits (not committed)
-models/vae_runs/   Training run artifacts (not committed — too large)
+python scripts/compare_baselines.py \
+  --vae-run-dir models/vae_runs/20260424_140621 \
+  --if-run-dir models/baseline_runs/isolation_forest/<run_id>
 ```
 
----
+Primary fair comparison at `train_p98`:
 
-## Key implementation notes
+| Model | Precision | Recall | F1 | ROC-AUC | PR-AUC |
+|---|---:|---:|---:|---:|---:|
+| VAE `20260424_140621` | 0.716 | 0.963 | 0.821 | 0.988 | 0.762 |
+| Isolation Forest | 0.496 | 0.994 | 0.661 | 0.996 | 0.836 |
 
-- **No input scaling** — standard scaling hurts anomaly detection because the model reconstructs scaled anomalies as well as normal data. Raw sensor values are used directly.
-- **Deterministic scoring** — the VAE sampling layer returns the latent mean (not a sample) at inference time, so scores are deterministic.
-- **Normal-only training** — training windows that overlap any failure interval are filtered out before training.
-- **Window labeling** — a 60-step window is labeled positive if the last 6 steps (10 %) contain any failure row.
-- Runs with β=0 are autoencoder baselines (no KL regularization), not true VAEs.
+The VAE has higher F1 at the train-only threshold; Isolation Forest reaches high
+recall by producing many more false positives.
+
+## Wrap-Up Experiment Grid
+
+Run the layer-size and window-size grid:
+
+```bash
+python scripts/run_experiment_grid.py \
+  --config configs/experiments/wrapup_grid_layers_windows.json
+
+python scripts/collect_experiment_results.py \
+  --study-dir models/vae_grid_runs/<study_id>
+
+python scripts/plot_experiment_comparison.py \
+  --study-dir models/vae_grid_runs/<study_id>
+```
+
+Latest fresh grid result at `train_p98`:
+
+| Study | Best setting | Precision | Recall | F1 | ROC-AUC | PR-AUC |
+|---|---|---:|---:|---:|---:|---:|
+| Layer comparison | hidden `[128, 64, 32]`, window 60 | 0.903 | 0.863 | 0.883 | 0.996 | 0.859 |
+| Window comparison | window 120, hidden `[128, 64]` | 0.353 | 0.100 | 0.156 | 0.990 | 0.638 |
+
+See:
+
+- [reports/wrapup_experiment_summary.md](reports/wrapup_experiment_summary.md)
+- [reports/tables/wrapup_grid_results.csv](reports/tables/wrapup_grid_results.csv)
+- [reports/figures/final_model_comparison.png](reports/figures/final_model_comparison.png)
+
+## Repository Layout
+
+```text
+configs/      JSON configs for data, features, experiments, and baselines
+dataset/      canonical local MetroPT3 raw/processed data path; files ignored
+data/         conventional data placeholder; files ignored
+docs/         methodology, reproducibility, and artifact policy
+scripts/      runnable CLI pipeline entry points
+src/          reusable package code
+  data/       labeling, splitting, and window construction
+  models/     VAE model, training, scoring, and run persistence helpers
+  evaluation/ metrics shared by VAE and baselines
+reports/      lightweight report tables and figures
+models/       local generated model runs; ignored except placeholders/docs
+notebooks/    optional exploratory/report notebook placeholders
+archive/      legacy notebooks and notes kept for reference
+notes/        current project notes
+```
+
+## Key Implementation Notes
+
+- Raw unscaled windows are the main experimental input.
+- The VAE sampling layer returns the latent mean at inference time, so scoring is
+  deterministic.
+- Training windows overlapping failure intervals are filtered out.
+- A 60-step window is positive if the final 10 percent contains any failure row.
+- Runs with `beta=0` are autoencoder baselines, not true VAEs.
+- Full model runs, raw data, processed arrays, and local environments are
+  ignored by Git. See [docs/artifact_policy.md](docs/artifact_policy.md).

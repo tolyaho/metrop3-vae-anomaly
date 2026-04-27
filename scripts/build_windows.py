@@ -7,10 +7,10 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.append(str(PROJECT_ROOT / "src"))
+sys.path.insert(0, str(PROJECT_ROOT))
 
-from data_preprocessing import find_split_run_by_name
-from feature_engineering import FeatureEngineeringParams, engineer_and_save_windows
+from src.data.preprocessing import find_split_run_by_name
+from src.data.windows import FeatureEngineeringParams, engineer_and_save_windows
 
 
 def _resolve(path: str | Path) -> Path:

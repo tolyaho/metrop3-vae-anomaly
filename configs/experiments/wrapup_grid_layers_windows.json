@@ -1,0 +1,27 @@
+{
+  "study_name": "wrapup_layers_windows_noscale_beta1",
+  "seed": 42,
+  "beta": 1.0,
+  "epochs": 20,
+  "latent_dim": 16,
+  "scaling": "none",
+  "processed_windows_root": "dataset/processed_windows",
+  "preprocessed_root": "dataset/preprocessed",
+  "split_run_name": "20260424_005227",
+  "thresholds": {
+    "train_percentiles": [98, 99, 99.5],
+    "include_val_f1": true
+  },
+  "layer_experiments": [
+    {"id": "layers_64_32", "window_size": 60, "stride": 10, "hidden": [64, 32]},
+    {"id": "layers_128_64", "window_size": 60, "stride": 10, "hidden": [128, 64]},
+    {"id": "layers_256_128", "window_size": 60, "stride": 10, "hidden": [256, 128]},
+    {"id": "layers_128_64_32", "window_size": 60, "stride": 10, "hidden": [128, 64, 32]},
+    {"id": "layers_256_128_64", "window_size": 60, "stride": 10, "hidden": [256, 128, 64]}
+  ],
+  "window_experiments": [
+    {"id": "win30", "window_size": 30, "stride": 5, "hidden": [128, 64]},
+    {"id": "win60", "window_size": 60, "stride": 10, "hidden": [128, 64]},
+    {"id": "win120", "window_size": 120, "stride": 20, "hidden": [128, 64]}
+  ]
+}

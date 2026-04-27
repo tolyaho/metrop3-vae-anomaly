@@ -10,10 +10,10 @@ import numpy as np
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.append(str(PROJECT_ROOT / "src"))
+sys.path.insert(0, str(PROJECT_ROOT))
 
-from metrics import binary_metrics, roc_auc_binary
-from vae_anomaly_detector import optimize_threshold_by_f1, classify
+from src.evaluation.metrics import binary_metrics, roc_auc_binary
+from src.models.vae_anomaly_detector import classify, optimize_threshold_by_f1
 
 
 def evaluate_with_threshold(

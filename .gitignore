@@ -1,33 +1,73 @@
+# OS / editor noise
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.cursor/
+*.swp
+*.swo
+*~
+
+# Python caches and build products
 __pycache__/
 *.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Notebook transient files
 .ipynb_checkpoints/
 
-# Local environments
+# Local environments and secrets
 .venv/
 venv/
 env/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.token
 
-# Raw and derived data (too large)
-dataset/raw/
-dataset/preprocessed/
-dataset/processed_windows/
+# Raw and derived MetroPT3 data. Keep README placeholders tracked.
+dataset/*
+!dataset/README.md
+data/*
+!data/README.md
 
-# Model artifacts (too large — see reports/tables/ for metrics)
+# Model and experiment artifacts. Keep only placeholders/docs tracked.
 models/vae_runs/*
 !models/vae_runs/.gitkeep
+models/baseline_runs/*
+!models/baseline_runs/.gitkeep
+models/vae_grid_runs/*
+!models/vae_grid_runs/.gitkeep
 
-# Temporary files
+# Historical binary artifacts are useful locally but should not be in Git.
+archive/legacy_outputs/vae_runs/
+archive/legacy_outputs/report_figures/
+archive/notebooks_old/*.ipynb
+
+# Logs and temporary outputs
 *.log
 *.tmp
+*.bak
+*.pid
+tmp/
+outputs/*
+!outputs/README.md
 
-# Internal agent planning docs
+# Local agent/tool state
+.claude/
 notes/agent_pack/
 
-# Claude Code internal
-.claude/
-
-# Intermediate/failed experiment configs (kept locally for reference)
+# Local-only exploratory configs kept for reference
 configs/experiments/*noscale_30ep.json
 configs/experiments/*noscale_archive*.json
 configs/experiments/*noscale_bn.json
