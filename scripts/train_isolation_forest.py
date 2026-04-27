@@ -316,49 +316,41 @@ def main() -> None:
         "metrics": rows,
     }
     (run_dir / "metrics.json").write_text(json.dumps(metrics_json, indent=2), encoding="utf-8")
-    metrics_csv = table_dir / f"{run_id}_isolation_forest_metrics.csv"
-    structured_metrics_csv = structured_table_dir / f"{run_id}_metrics.csv"
+    report_metrics_csv = structured_table_dir / f"{run_id}_metrics.csv"
     run_metrics_csv = run_table_dir / "metrics.csv"
-    metrics_df.to_csv(metrics_csv, index=False)
-    metrics_df.to_csv(structured_metrics_csv, index=False)
+    metrics_df.to_csv(report_metrics_csv, index=False)
     metrics_df.to_csv(run_metrics_csv, index=False)
 
     _save_predictions(run_dir / "predictions_val.csv", val_y, val_scores, thresholds)
     _save_predictions(run_dir / "predictions_test.csv", test_y, test_scores, thresholds)
 
     train_p98 = float(thresholds["train_p98"]["threshold"])
-    figure_paths = {
-        "score_hist_test_train_p98.png": fig_dir / f"{run_id}_if_score_hist_test.png",
-        "roc_curve_test.png": fig_dir / f"{run_id}_if_roc_curve_test.png",
-        "pr_curve_test.png": fig_dir / f"{run_id}_if_pr_curve_test.png",
-        "timeline_test_train_p98.png": fig_dir / f"{run_id}_if_timeline_test.png",
-    }
     _plot_score_hist(
-        [run_fig_dir / "score_hist_test_train_p98.png", structured_fig_dir / "score_hist_test_train_p98.png", figure_paths["score_hist_test_train_p98.png"]],
+        [run_fig_dir / "score_hist_test_train_p98.png", structured_fig_dir / "score_hist_test_train_p98.png"],
         test_y,
         test_scores,
         train_p98,
     )
     _plot_roc(
-        [run_fig_dir / "roc_curve_test.png", structured_fig_dir / "roc_curve_test.png", figure_paths["roc_curve_test.png"]],
+        [run_fig_dir / "roc_curve_test.png", structured_fig_dir / "roc_curve_test.png"],
         test_y,
         test_scores,
     )
     _plot_pr(
-        [run_fig_dir / "pr_curve_test.png", structured_fig_dir / "pr_curve_test.png", figure_paths["pr_curve_test.png"]],
+        [run_fig_dir / "pr_curve_test.png", structured_fig_dir / "pr_curve_test.png"],
         test_y,
         test_scores,
     )
     _plot_timeline(
-        [run_fig_dir / "timeline_test_train_p98.png", structured_fig_dir / "timeline_test_train_p98.png", figure_paths["timeline_test_train_p98.png"]],
+        [run_fig_dir / "timeline_test_train_p98.png", structured_fig_dir / "timeline_test_train_p98.png"],
         test_y,
         test_scores,
         train_p98,
     )
 
     print(metrics_df[["threshold_method", "split", "precision", "recall", "f1", "roc_auc", "pr_auc"]].to_string(index=False))
-    print(f"Saved metrics: {metrics_csv}")
-    print(f"Saved structured metrics: {structured_metrics_csv}")
+    print(f"Saved run metrics: {run_metrics_csv}")
+    print(f"Saved report metrics: {report_metrics_csv}")
     print(f"Saved run figures: {run_fig_dir}")
     print(f"Saved report figures: {structured_fig_dir}")
 

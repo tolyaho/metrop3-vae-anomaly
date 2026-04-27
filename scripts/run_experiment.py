@@ -16,9 +16,9 @@ def _run(args: list[str]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the full MetroPT3 VAE pipeline from configs.")
-    parser.add_argument("--data-config", default="configs/data/base.json")
-    parser.add_argument("--feature-config", default="configs/features/point.json")
-    parser.add_argument("--experiment-config", default="configs/experiments/dense_point_beta0.json")
+    parser.add_argument("--data-config", default="configs/data/archive_like_window60.json")
+    parser.add_argument("--feature-config", default="configs/features/window60_noscale.json")
+    parser.add_argument("--experiment-config", default="configs/experiments/dense_window60_beta1_noscale_final.json")
     parser.add_argument("--skip-preprocess", action="store_true")
     parser.add_argument("--skip-windows", action="store_true")
     args = parser.parse_args()

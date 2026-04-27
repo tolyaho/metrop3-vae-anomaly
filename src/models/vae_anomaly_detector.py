@@ -458,7 +458,7 @@ def find_latest_processed_window_run(processed_windows_root: str | Path, require
         if require_val:
             raise FileNotFoundError(
                 f"No processed window runs with validation files found in {root}. "
-                "Run preprocess_data.ipynb (2/1/1) then engineer_feature.ipynb."
+                "Run scripts/preprocess.py, then scripts/build_windows.py."
             )
         raise FileNotFoundError(f"No processed window runs found in {root}")
     return runs[-1]

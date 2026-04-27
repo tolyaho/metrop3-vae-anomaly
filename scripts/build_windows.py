@@ -34,7 +34,7 @@ def _find_split_run(preprocessed_root: Path, split_run_name: str) -> Path:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build scaled MetroPT3 point/window arrays.")
+    parser = argparse.ArgumentParser(description="Build MetroPT3 point/window arrays.")
     parser.add_argument("--config", default="configs/features/point.json", help="Path to feature JSON config.")
     args = parser.parse_args()
 

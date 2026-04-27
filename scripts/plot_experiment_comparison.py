@@ -152,7 +152,7 @@ def _final_model_comparison(df: pd.DataFrame, fig_dir: Path, report_dir: Path) -
             "pr_auc": best["pr_auc"],
         })
 
-    baseline_path = PROJECT_ROOT / "reports" / "tables" / "baseline_comparison_latest.csv"
+    baseline_path = PROJECT_ROOT / "reports" / "tables" / "baselines" / "baseline_comparison_latest.csv"
     if baseline_path.exists():
         base = pd.read_csv(baseline_path)
         for row in base.itertuples():
@@ -252,7 +252,7 @@ def _summary_md(df: pd.DataFrame, study_dir: Path) -> str:
         "",
         "- The comparison uses raw, unscaled windows.",
         "- `val_f1` rows are diagnostic because they use validation labels.",
-        "- The main fair model-selection threshold is `train_p98`.",
+        "- The main model-selection threshold is `train_p98`.",
     ])
     return "\n".join(lines) + "\n"
 

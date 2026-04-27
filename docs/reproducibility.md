@@ -1,4 +1,4 @@
-# Reproducibility Guide
+# Reproducibility
 
 ## Environment
 
@@ -25,12 +25,12 @@ The raw dataset is not committed.
 python scripts/preprocess.py --config configs/data/archive_like_window60.json
 python scripts/build_windows.py --config configs/features/window60_noscale.json
 python scripts/train_vae.py --config configs/experiments/dense_window60_beta1_noscale_final.json
-python scripts/evaluate_thresholds.py --run-dir models/vae_runs/<run_id>
+python scripts/evaluate.py --run-dir models/vae_runs/<run_id>
 ```
 
-The main fair threshold is `train_p98`, the 98th percentile of training
-reconstruction scores. Validation-F1 thresholds are diagnostic because they use
-labels.
+`train_p98` is the main threshold: the 98th percentile of training
+reconstruction scores. `val_f1` rows are diagnostic because that threshold uses
+validation labels.
 
 ## Fair Classical Baseline
 

@@ -1,9 +1,9 @@
 # Reports
 
-This directory stores lightweight report-ready outputs:
+This directory stores selected report outputs:
 
-- `figures/`: PNG/PDF figures used in the final report.
-- `tables/`: CSV/JSON metric summaries.
+- `figures/`: plots used by the README or final report.
+- `tables/`: metric summaries and comparison tables.
 - `wrapup_experiment_summary.md`: compact summary of the final wrap-up grid.
 
 Full model weights, score arrays, predictions, and run histories are stored under

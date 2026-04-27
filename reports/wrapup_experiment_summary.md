@@ -36,4 +36,4 @@ Validation-label thresholds are kept only as diagnostics.
 
 - The comparison uses raw, unscaled windows.
 - `val_f1` rows are diagnostic because they use validation labels.
-- The main fair model-selection threshold is `train_p98`.
+- The main model-selection threshold is `train_p98`.

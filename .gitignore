@@ -52,6 +52,7 @@ models/vae_grid_runs/*
 # Historical binary artifacts are useful locally but should not be in Git.
 archive/legacy_outputs/vae_runs/
 archive/legacy_outputs/report_figures/
+archive/legacy_outputs/report_tables/
 archive/notebooks_old/*.ipynb
 
 # Logs and temporary outputs

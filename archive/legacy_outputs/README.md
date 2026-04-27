@@ -11,5 +11,8 @@ The `report_figures/` folder contains older supervised-baseline figures moved
 out of active `reports/figures/` so the main report outputs reflect the final
 fair unsupervised comparison.
 
+The `report_tables/` folder contains older intermediate metric tables and
+duplicate report copies. The active report tables remain under `reports/tables/`.
+
 New report-ready runs should be produced through the script pipeline and saved
 under `models/vae_runs/`.

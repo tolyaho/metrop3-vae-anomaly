@@ -1,43 +1,30 @@
 # Project Overview
 
-## What we're doing
-
-Train a VAE on **normal** air-compressor sensor data. At inference, reconstruction error is the anomaly score — windows that don't look like normal operation reconstruct poorly and score high. A threshold converts scores to binary predictions.
+The project trains reconstruction models on normal MetroPT3 compressor windows
+and uses reconstruction error as an anomaly score for later air-leak failures.
 
 ## Data
 
-UCI MetroPT3 dataset (~1.5M rows, 15 sensor features, 1-minute resolution). Four labeled AirLeak failures:
+MetroPT3 provides one-minute readings from 15 compressor sensors. The labeled
+failure intervals used here are F1-F4 from 2020-04-18 through 2020-07-15.
 
-| ID | Period | Duration |
-|----|--------|----------|
-| F1 | Apr 18 2020 | 24 h |
-| F2 | May 29–30 2020 | 6.5 h |
-| F3 | Jun 5–7 2020 | 52 h |
-| F4 | Jul 15 2020 | 4.5 h |
+## Main Setup
 
-**Split used** (archive-like): Train Feb–May (normal only), Val May–Jun (F2), Test Jun–Aug (F3, F4).
+- Train on normal windows from February-April 2020.
+- Use May 2020 as validation/diagnostic data.
+- Evaluate on June-July 2020 failures.
+- Build 60-step sliding windows with stride 10 for the main run.
+- Label a window positive when the final 10 percent overlaps a failure interval.
 
-## Model
+## Models
 
-Dense VAE: flatten 60×15 window → Dense(128) → Dense(64) → latent(16) → decode back.
+- Dense VAE: `[128, 64]` encoder, `latent_dim=16`, `beta=1.0`.
+- Isolation Forest: unsupervised classical baseline on the same normal training
+  windows.
 
-Loss: `reconstruction_MSE + β × KL_divergence`
+## Thresholds
 
-β=0 = autoencoder baseline (no KL regularization).  
-β=1 = true VAE (latent space regularized toward N(0,1)).
+- `train_p98`: 98th percentile of training scores. Main comparison threshold.
+- `val_f1`: selected with validation labels. Diagnostic only.
 
-Inference is deterministic: sampling layer returns latent mean, not a sample.
-
-## Threshold strategies
-
-| Method | How |
-|--------|-----|
-| `val_f1` | Search thresholds, maximize F1 on val labels |
-| `train_p98` | 98th percentile of training reconstruction errors |
-| `mean_std` | mean + k×std of training scores |
-
-## Key finding
-
-**Input scaling hurts** — standard scaling allows the model to reconstruct anomaly windows as well as normal ones (ROC-AUC collapses to ~0.5). Using raw unscaled sensor values preserves the anomaly signal.
-
-Best result: F1=0.821 (train_p98 threshold), ROC-AUC=0.988.
+Main VAE result at `train_p98`: F1=0.821, ROC-AUC=0.988.

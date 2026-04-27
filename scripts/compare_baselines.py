@@ -225,37 +225,29 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Compare saved VAE and Isolation Forest baseline runs.")
     parser.add_argument("--vae-run-dir", required=True)
     parser.add_argument("--if-run-dir", required=True)
-    parser.add_argument("--output-table", default="reports/tables/baseline_comparison_latest.csv")
-    parser.add_argument("--output-figure", default="reports/figures/baseline_comparison_latest.png")
+    parser.add_argument("--output-table", default="reports/tables/baselines/baseline_comparison_latest.csv")
+    parser.add_argument("--output-figure", default="reports/figures/baselines/baseline_comparison_latest.png")
     args = parser.parse_args()
 
     vae_run_dir = _resolve(args.vae_run_dir)
     if_run_dir = _resolve(args.if_run_dir)
     out_table = _resolve(args.output_table)
     out_figure = _resolve(args.output_figure)
-    structured_table = PROJECT_ROOT / "reports" / "tables" / "baselines" / "baseline_comparison_latest.csv"
     primary_table = PROJECT_ROOT / "reports" / "tables" / "baselines" / "baseline_comparison_primary_train_p98.csv"
-    structured_figure = PROJECT_ROOT / "reports" / "figures" / "baselines" / "baseline_comparison_latest.png"
     out_table.parent.mkdir(parents=True, exist_ok=True)
     out_figure.parent.mkdir(parents=True, exist_ok=True)
-    structured_table.parent.mkdir(parents=True, exist_ok=True)
     primary_table.parent.mkdir(parents=True, exist_ok=True)
-    structured_figure.parent.mkdir(parents=True, exist_ok=True)
 
     rows = _vae_rows(vae_run_dir) + _if_rows(if_run_dir)
     df = _annotate_rows(pd.DataFrame(rows))
     df.to_csv(out_table, index=False)
-    df.to_csv(structured_table, index=False)
     df[df["is_primary"]].to_csv(primary_table, index=False)
     _plot_comparison(df, out_figure)
-    _plot_comparison(df, structured_figure)
 
     print(df[["model", "threshold_method", "precision", "recall", "f1", "roc_auc", "pr_auc"]].to_string(index=False))
     print(f"Saved table: {out_table}")
-    print(f"Saved structured table: {structured_table}")
     print(f"Saved primary table: {primary_table}")
     print(f"Saved figure: {out_figure}")
-    print(f"Saved structured figure: {structured_figure}")
 
 
 if __name__ == "__main__":
