@@ -55,6 +55,14 @@ archive/legacy_outputs/report_figures/
 archive/legacy_outputs/report_tables/
 archive/notebooks_old/*.ipynb
 
+# Generated report figures. Keep only selected final images in Git.
+reports/figures/**
+!reports/figures/
+!reports/figures/baselines/**
+!reports/figures/baselines/
+!reports/figures/layer_comparison_auc_train_p98.png
+!reports/figures/final_model_comparison.png
+
 # Logs and temporary outputs
 *.log
 *.tmp
