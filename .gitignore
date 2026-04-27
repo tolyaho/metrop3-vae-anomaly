@@ -62,6 +62,10 @@ reports/figures/**
 !reports/figures/baselines/
 !reports/figures/layer_comparison_auc_train_p98.png
 !reports/figures/final_model_comparison.png
+!reports/figures/vae_latent_space_20260424_174443_test_pca.png
+!reports/figures/vae_latent_space_20260424_174443_test_tsne.png
+!reports/figures/vae_latent_space_20260424_140621_test_pca.png
+!reports/figures/vae_latent_space_20260424_140621_test_tsne.png
 
 # Logs and temporary outputs
 *.log
