@@ -1,3 +1,12 @@
+"""Run the VAE layer / window / architecture experiment grid (multi-seed capable).
+
+Each entry in ``layer_experiments`` / ``window_experiments`` is repeated for
+every seed in ``seeds`` (defaulting to ``[seed]`` for backward compatibility).
+The experiment_id stored in the per-run grid metadata is suffixed with the
+seed (``<id>_s<seed>``) so a downstream collector can group runs sharing the
+same architecture / window.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -43,10 +52,17 @@ def _matching_window_run(root: Path, split_run_name: str, window_size: int, stri
         except Exception:
             continue
         params = meta.get("params", {})
-        if (
+        train_csv = str(params.get("train_csv_path", ""))
+        split_match = (
             params.get("split_run_name") == split_run_name
-            or Path(str(params.get("train_csv_path", ""))).parent.name == split_run_name
-        ) and int(params.get("window_size", -1)) == window_size and int(params.get("stride", -1)) == stride:
+            or split_run_name == "latest"
+            or Path(train_csv).parent.name == split_run_name
+        )
+        same_geom = (
+            int(params.get("window_size", -1)) == int(window_size)
+            and int(params.get("stride", -1)) == int(stride)
+        )
+        if split_match and same_geom:
             if params.get("scale_features") is False and params.get("train_normal_only") is True:
                 return run_dir
     return None
@@ -73,7 +89,17 @@ def _feature_config(base_cfg: dict, window_size: int, stride: int) -> dict:
     }
 
 
-def _vae_config(base_cfg: dict, exp: dict, window_run: Path, output_root: Path, group: str) -> dict:
+def _vae_config(
+    base_cfg: dict,
+    exp: dict,
+    window_run: Path,
+    output_root: Path,
+    group: str,
+    *,
+    seed: int,
+    base_experiment_id: str,
+    experiment_id: str,
+) -> dict:
     return {
         "processed_windows_root": str(_resolve(base_cfg.get("processed_windows_root", "dataset/processed_windows")).relative_to(PROJECT_ROOT)),
         "window_run_name": window_run.name,
@@ -82,14 +108,16 @@ def _vae_config(base_cfg: dict, exp: dict, window_run: Path, output_root: Path, 
         "grid_metadata": {
             "study_name": base_cfg["study_name"],
             "experiment_group": group,
-            "experiment_id": exp["id"],
+            "experiment_id": experiment_id,
+            "base_experiment_id": base_experiment_id,
             "window_size": int(exp["window_size"]),
             "stride": int(exp["stride"]),
             "hidden": exp["hidden"],
             "scaling": base_cfg.get("scaling", "none"),
+            "seed": int(seed),
         },
         "vae_config": {
-            "architecture": "dense",
+            "architecture": exp.get("architecture", "dense"),
             "latent_dim": int(base_cfg["latent_dim"]),
             "hidden_units": exp["hidden"],
             "encoder_use_batchnorm": False,
@@ -97,14 +125,18 @@ def _vae_config(base_cfg: dict, exp: dict, window_run: Path, output_root: Path, 
         },
         "train_config": {
             "epochs": int(base_cfg["epochs"]),
-            "batch_size": 512,
-            "learning_rate": 0.001,
+            "batch_size": int(base_cfg.get("batch_size", 512)),
+            "learning_rate": float(base_cfg.get("learning_rate", 1e-3)),
             "beta": float(base_cfg["beta"]),
-            "beta_warmup_epochs": 0,
+            "beta_warmup_epochs": int(base_cfg.get("beta_warmup_epochs", 0)),
             "validation_split": 0,
             "gradient_clipnorm": 1.0,
-            "random_seed": int(base_cfg["seed"]),
+            "random_seed": int(seed),
             "verbose_epoch": True,
+            "early_stopping_metric": str(base_cfg.get("early_stopping_metric", "val_roc_auc")),
+            "early_stopping_patience": int(base_cfg.get("early_stopping_patience", 4)),
+            "early_stopping_min_epochs": int(base_cfg.get("early_stopping_min_epochs", 2)),
+            "early_stopping_restore_best": bool(base_cfg.get("early_stopping_restore_best", True)),
         },
         "threshold_config": {
             "method": "percentile",
@@ -120,14 +152,15 @@ def _vae_config(base_cfg: dict, exp: dict, window_run: Path, output_root: Path, 
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the wrap-up VAE layer/window experiment grid.")
-    parser.add_argument("--config", default="configs/experiments/wrapup_grid_layers_windows.json")
+    parser = argparse.ArgumentParser(description="Run the VAE experiment grid.")
+    parser.add_argument("--config", default="configs/experiments/vae_grid.json")
     parser.add_argument("--study-dir", default=None)
     parser.add_argument("--skip-existing", action="store_true", help="Skip an experiment if its output root already has a run.")
     args = parser.parse_args()
 
     cfg_path = _resolve(args.config)
     cfg = _load_json(cfg_path)
+    seeds = [int(s) for s in cfg.get("seeds", [int(cfg.get("seed", 42))])]
     timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
     study_id = f"{timestamp}_{cfg['study_name']}"
     study_dir = _resolve(args.study_dir) if args.study_dir else PROJECT_ROOT / "models" / "vae_grid_runs" / study_id
@@ -148,18 +181,19 @@ def main() -> None:
         ("layers", exp) for exp in cfg.get("layer_experiments", [])
     ] + [
         ("windows", exp) for exp in cfg.get("window_experiments", [])
+    ] + [
+        ("architectures", exp) for exp in cfg.get("architecture_experiments", [])
     ]
 
     for group, exp in experiments:
-        exp_id = exp["id"]
-        print(f"\n=== {group}/{exp_id} ===", flush=True)
+        base_id = exp["id"]
         window_run = _matching_window_run(processed_root, split_run_name, int(exp["window_size"]), int(exp["stride"]))
         if window_run is None:
             feature_cfg = _feature_config(cfg, int(exp["window_size"]), int(exp["stride"]))
-            feature_cfg_path = configs_dir / f"features_{group}_{exp_id}.json"
+            feature_cfg_path = configs_dir / f"features_{group}_{base_id}.json"
             _write_json(feature_cfg_path, feature_cfg)
             before = set(p.name for p in processed_root.iterdir() if p.is_dir()) if processed_root.exists() else set()
-            print(f"Building windows for {exp_id}...")
+            print(f"Building windows for {base_id}...")
             _run([sys.executable, "scripts/build_windows.py", "--config", str(feature_cfg_path.relative_to(PROJECT_ROOT))])
             after = sorted([p for p in processed_root.iterdir() if p.is_dir() and p.name not in before])
             if not after:
@@ -167,41 +201,58 @@ def main() -> None:
             window_run = after[-1]
             reused = False
         else:
-            print(f"Reusing windows: {window_run}")
             reused = True
-
-        run_output_root = runs_dir / group / exp_id
-        if args.skip_existing and run_output_root.exists() and any(p.is_dir() for p in run_output_root.iterdir()):
-            print(f"Skipping existing run output: {run_output_root}")
-            run_dir = sorted(p for p in run_output_root.iterdir() if p.is_dir())[-1]
-        else:
-            vae_cfg = _vae_config(cfg, exp, window_run, run_output_root, group)
-            vae_cfg_path = configs_dir / f"vae_{group}_{exp_id}.json"
-            _write_json(vae_cfg_path, vae_cfg)
-            before = set(p.name for p in run_output_root.iterdir() if p.is_dir()) if run_output_root.exists() else set()
-            print(f"Training VAE for {exp_id}...")
-            _run([sys.executable, "scripts/train_vae.py", "--config", str(vae_cfg_path.relative_to(PROJECT_ROOT))])
-            after = sorted([p for p in run_output_root.iterdir() if p.is_dir() and p.name not in before])
-            if not after:
-                raise RuntimeError(f"VAE training finished but no new run appeared in {run_output_root}")
-            run_dir = after[-1]
-
         meta = _load_json(window_run / "metadata.json")
-        manifest_rows.append({
-            "study_id": study_dir.name,
-            "experiment_group": group,
-            "experiment_id": exp_id,
-            "window_run": str(window_run.relative_to(PROJECT_ROOT)),
-            "run_dir": str(run_dir.relative_to(PROJECT_ROOT)),
-            "window_size": int(exp["window_size"]),
-            "stride": int(exp["stride"]),
-            "hidden": json.dumps(exp["hidden"]),
-            "reused_windows": reused,
-            "n_train_windows": int(meta.get("train_windows_shape", [0])[0]),
-            "n_val_windows": int(meta.get("val_windows_shape", [0])[0]),
-            "n_test_windows": int(meta.get("test_windows_shape", [0])[0]),
-        })
-        pd.DataFrame(manifest_rows).to_csv(study_dir / "window_manifest.csv", index=False)
+
+        exp_seeds = [int(s) for s in exp.get("seeds", seeds)]
+        for seed in exp_seeds:
+            exp_id = f"{base_id}_s{seed}" if len(exp_seeds) > 1 else base_id
+            print(f"\n=== {group}/{exp_id} (seed={seed}) ===", flush=True)
+            print(f"{'Reusing' if reused else 'Built'} windows: {window_run}")
+
+            run_output_root = runs_dir / group / exp_id
+            if args.skip_existing and run_output_root.exists() and any(p.is_dir() for p in run_output_root.iterdir()):
+                print(f"Skipping existing run output: {run_output_root}")
+                run_dir = sorted(p for p in run_output_root.iterdir() if p.is_dir())[-1]
+            else:
+                vae_cfg = _vae_config(
+                    cfg,
+                    exp,
+                    window_run,
+                    run_output_root,
+                    group,
+                    seed=seed,
+                    base_experiment_id=base_id,
+                    experiment_id=exp_id,
+                )
+                vae_cfg_path = configs_dir / f"vae_{group}_{exp_id}.json"
+                _write_json(vae_cfg_path, vae_cfg)
+                before = set(p.name for p in run_output_root.iterdir() if p.is_dir()) if run_output_root.exists() else set()
+                print(f"Training VAE for {exp_id} (seed {seed})...")
+                _run([sys.executable, "scripts/train_vae.py", "--config", str(vae_cfg_path.relative_to(PROJECT_ROOT))])
+                after = sorted([p for p in run_output_root.iterdir() if p.is_dir() and p.name not in before])
+                if not after:
+                    raise RuntimeError(f"VAE training finished but no new run appeared in {run_output_root}")
+                run_dir = after[-1]
+
+            manifest_rows.append({
+                "study_id": study_dir.name,
+                "experiment_group": group,
+                "base_experiment_id": base_id,
+                "experiment_id": exp_id,
+                "seed": int(seed),
+                "window_run": str(window_run.relative_to(PROJECT_ROOT)),
+                "run_dir": str(run_dir.relative_to(PROJECT_ROOT)),
+                "window_size": int(exp["window_size"]),
+                "stride": int(exp["stride"]),
+                "hidden": json.dumps(exp["hidden"]),
+                "architecture": exp.get("architecture", "dense"),
+                "reused_windows": reused,
+                "n_train_windows": int(meta.get("train_windows_shape", [0])[0]),
+                "n_val_windows": int(meta.get("val_windows_shape", [0])[0]),
+                "n_test_windows": int(meta.get("test_windows_shape", [0])[0]),
+            })
+            pd.DataFrame(manifest_rows).to_csv(study_dir / "window_manifest.csv", index=False)
 
     summary = {"study_id": study_dir.name, "config": cfg, "status": "completed", "experiments": manifest_rows}
     _write_json(study_dir / "summary.json", summary)

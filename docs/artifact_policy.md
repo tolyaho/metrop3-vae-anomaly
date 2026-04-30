@@ -1,45 +1,49 @@
-# Artifact Policy
+# Artifact policy
 
-Commit source code, configs, documentation, and lightweight report outputs. Do
-not commit raw data, processed arrays, model weights, or full run folders.
+Commit source code, configs, documentation and the lightweight report
+outputs. Do not commit raw data, processed arrays, model weights or full
+run folders.
 
 ## Tracked
 
-- `README.md`, `docs/`, and concise project notes
-- reusable code in `src/`
-- command-line scripts in `scripts/`
-- reproducibility configs in `configs/`
-- selected tables and figures in `reports/`
-- placeholder files such as `.gitkeep`
+- `README.md`, `docs/`, project notes
+- Reusable code in `src/`
+- Command-line scripts in `scripts/`
+- Configs in `configs/`
+- Tables and figures in `reports/`
 
 ## Ignored
 
-- `dataset/raw/`, `dataset/preprocessed/`, `dataset/processed_windows/`
-- `data/` local data drops, except `data/README.md`
-- `models/vae_runs/`, `models/baseline_runs/`, `models/vae_grid_runs/`
-- `archive/notebooks_old/*.ipynb` and legacy output folders with absolute paths
+- `dataset/` (raw, preprocessed and processed windows), except `dataset/README.md`
+- `models/` run directories, except `models/README.md`
 - Python environments and caches
-- notebook checkpoints
-- local IDE/tool state
-- temporary outputs under `outputs/`
+- Notebook checkpoints
+- Local IDE / tool state
+- `*.log`, `*.tmp`, `tmp/`
 
 ## Reproducibility
 
-Large artifacts should be regenerated from scripts. The main workflow is:
+Heavy artifacts are regenerated from scripts. Full pipeline in
+[`reproducibility.md`](reproducibility.md); short version:
 
 ```bash
-python scripts/preprocess.py --config configs/data/archive_like_window60.json
-python scripts/build_windows.py --config configs/features/window60_noscale.json
-python scripts/train_vae.py --config configs/experiments/dense_window60_beta1_noscale_final.json
-python scripts/evaluate.py --run-dir models/vae_runs/<run_id>
-```
+python scripts/preprocess.py     --config configs/data/metropt3.json
+python scripts/build_windows.py  --config configs/features/window30_noscale.json
+python scripts/build_windows.py  --config configs/features/window60_noscale.json
+python scripts/build_windows.py  --config configs/features/window120_noscale.json
 
-Wrap-up comparisons are generated with:
-
-```bash
-python scripts/train_isolation_forest.py --config configs/baselines/isolation_forest_window60_noscale.json
-python scripts/compare_baselines.py --vae-run-dir models/vae_runs/20260424_140621 --if-run-dir models/baseline_runs/isolation_forest/<run_id>
-python scripts/run_experiment_grid.py --config configs/experiments/wrapup_grid_layers_windows.json
+python scripts/run_experiment_grid.py --config configs/experiments/vae_grid.json
 python scripts/collect_experiment_results.py --study-dir models/vae_grid_runs/<study_id>
 python scripts/plot_experiment_comparison.py --study-dir models/vae_grid_runs/<study_id>
+
+python scripts/train_classical_baseline.py --config configs/baselines/isolation_forest_window60_noscale.json
+python scripts/train_classical_baseline.py --config configs/baselines/pca_recon_window60_noscale.json
+python scripts/train_classical_baseline.py --config configs/baselines/oc_svm_window60_noscale.json
+python scripts/train_classical_baseline.py --config configs/baselines/lof_window60_noscale.json
+
+python scripts/build_canonical_comparison.py --vae-base-id win120
+python scripts/plot_models_overlay.py        --vae-grid-dir models/vae_grid_runs/<study_id> --vae-grid-base-id win120
+python scripts/plot_threshold_sensitivity.py --vae-run-dir models/vae_grid_runs/<study_id>/runs/windows/win120_s42/<run_ts>
+python scripts/analyze_failure_events.py --model "VAE (dense)":vae:<best_vae_run> ...
+python scripts/plot_vae_latent_space.py --run-dir <best_vae_run> --split test
 ```

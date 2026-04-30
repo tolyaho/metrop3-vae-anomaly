@@ -1,30 +1,17 @@
-# OS / editor noise
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-.cursor/
-*.swp
-*.swo
-*~
-
-# Python caches and build products
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.coverage
-htmlcov/
-build/
-dist/
-*.egg-info/
 
-# Notebook transient files
-.ipynb_checkpoints/
-
-# Local environments and secrets
+# Virtual envs and secrets
 .venv/
 venv/
 env/
@@ -35,58 +22,29 @@ env/
 *.key
 *.token
 
-# Raw and derived MetroPT3 data. Keep README placeholders tracked.
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.cursor/
+.claude/
+*.swp
+*.swo
+*~
+.ipynb_checkpoints/
+
+# Raw and derived data; keep README placeholder.
 dataset/*
 !dataset/README.md
-data/*
-!data/README.md
 
-# Model and experiment artifacts. Keep only placeholders/docs tracked.
-models/vae_runs/*
-!models/vae_runs/.gitkeep
-models/baseline_runs/*
-!models/baseline_runs/.gitkeep
-models/vae_grid_runs/*
-!models/vae_grid_runs/.gitkeep
+# Heavy run artifacts; keep README placeholder.
+models/*
+!models/README.md
 
-# Historical binary artifacts are useful locally but should not be in Git.
-archive/legacy_outputs/vae_runs/
-archive/legacy_outputs/report_figures/
-archive/legacy_outputs/report_tables/
-archive/notebooks_old/*.ipynb
-
-# Generated report figures. Keep only selected final images in Git.
-reports/figures/**
-!reports/figures/
-!reports/figures/layer_comparison_auc_train_p98.png
-!reports/figures/final_model_comparison.png
-!reports/figures/baselines/
-!reports/figures/baselines/baseline_comparison_latest.png
-!reports/figures/vae_latent_space_20260426_232627_test_pca.png
-!reports/figures/vae_latent_space_20260424_174443_test_pca.png
-!reports/figures/vae_latent_space_20260424_174443_test_tsne.png
-!reports/figures/vae_latent_space_20260424_140621_test_pca.png
-!reports/figures/vae_latent_space_20260424_140621_test_tsne.png
-
-# Logs and temporary outputs
+# Temporary outputs and logs
 *.log
 *.tmp
 *.bak
 *.pid
 tmp/
-outputs/*
-!outputs/README.md
-
-# Local agent/tool state
-.claude/
-notes/agent_pack/
-summary.md
-
-# Local-only exploratory configs kept for reference
-configs/experiments/*noscale_30ep.json
-configs/experiments/*noscale_archive*.json
-configs/experiments/*noscale_bn.json
-configs/experiments/*noscale_p98.json
-configs/experiments/*noscale_small.json
-configs/experiments/*betawarmup*.json
-configs/experiments/conv1d*noscale.json

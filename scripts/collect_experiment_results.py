@@ -1,3 +1,14 @@
+"""Collect grid run summaries into per-run CSV + multi-seed aggregate CSV.
+
+Outputs (under ``study_dir/tables`` and ``reports/tables``):
+
+  * ``grid_results.csv``         -- one row per (run, threshold, split).
+  * ``grid_aggregated.csv``      -- mean +/- std over seeds for each
+    (group, base_experiment_id, threshold, split).
+  * ``grid_best_by_group.csv``   -- the best aggregated row per group
+    using ``train_p98`` + test split.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -11,15 +22,17 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.evaluation.metrics import anomaly_metrics
+from src.evaluation.metrics import anomaly_metrics  # noqa: E402
 
 
 REQUIRED_COLUMNS = [
     "study_id",
     "experiment_group",
+    "base_experiment_id",
     "experiment_id",
     "run_id",
     "run_dir",
+    "architecture",
     "window_size",
     "stride",
     "hidden",
@@ -52,6 +65,8 @@ REQUIRED_COLUMNS = [
     "test_score_mean_normal",
     "test_score_mean_anomaly",
 ]
+
+AGGREGATED_METRIC_COLS = ["precision", "recall", "f1", "roc_auc", "pr_auc", "accuracy", "balanced_accuracy"]
 
 
 def _resolve(path: str | Path) -> Path:
@@ -121,15 +136,17 @@ def _row_base(study_id: str, run_dir: Path, summary: dict) -> dict:
     return {
         "study_id": study_id,
         "experiment_group": grid_meta.get("experiment_group", ""),
+        "base_experiment_id": grid_meta.get("base_experiment_id", grid_meta.get("experiment_id", run_dir.parent.name)),
         "experiment_id": grid_meta.get("experiment_id", run_dir.parent.name),
         "run_id": run_dir.name,
         "run_dir": str(run_dir.relative_to(PROJECT_ROOT)),
+        "architecture": vae_cfg.get("architecture", "dense"),
         "window_size": int(grid_meta.get("window_size", source_params.get("window_size", 0))),
         "stride": int(grid_meta.get("stride", source_params.get("stride", 0))),
         "hidden": json.dumps(vae_cfg.get("hidden_units", [])),
         "latent_dim": int(vae_cfg.get("latent_dim", 0)),
         "beta": float(train_cfg.get("beta", 0.0)),
-        "seed": int(train_cfg.get("random_seed", 0)),
+        "seed": int(grid_meta.get("seed", train_cfg.get("random_seed", 0))),
         "scaling": grid_meta.get("scaling", "none" if source_params.get("scale_features") is False else "standard"),
         "n_train_windows": int(summary.get("train_samples", len(train_scores))),
         "n_val_windows": int(summary.get("val_samples", len(val_labels))),
@@ -167,8 +184,44 @@ def _collect_run(study_id: str, study_cfg: dict, run_dir: Path) -> list[dict]:
     return rows
 
 
+def _aggregate(df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate seed replicates: mean and std for the metric columns."""
+    if df.empty:
+        return df
+
+    group_cols = [
+        "study_id",
+        "experiment_group",
+        "base_experiment_id",
+        "architecture",
+        "window_size",
+        "stride",
+        "hidden",
+        "latent_dim",
+        "beta",
+        "scaling",
+        "threshold_method",
+        "split",
+    ]
+    agg: dict[str, tuple[str, str]] = {}
+    for col in AGGREGATED_METRIC_COLS:
+        agg[f"{col}_mean"] = (col, "mean")
+        agg[f"{col}_std"] = (col, "std")
+    agg["n_seeds"] = ("seed", "count")
+    agg["seeds"] = ("seed", lambda s: ",".join(str(int(x)) for x in sorted(s)))
+    agg["threshold_value_mean"] = ("threshold_value", "mean")
+    agg["threshold_value_std"] = ("threshold_value", "std")
+
+    grouped = df.groupby(group_cols, dropna=False).agg(**agg).reset_index()
+
+    for col in AGGREGATED_METRIC_COLS:
+        std_col = f"{col}_std"
+        grouped[std_col] = grouped[std_col].fillna(0.0)
+    return grouped
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Collect wrap-up VAE grid results into CSV tables.")
+    parser = argparse.ArgumentParser(description="Collect VAE grid results into CSV tables (incl. multi-seed aggregates).")
     parser.add_argument("--study-dir", required=True)
     args = parser.parse_args()
 
@@ -189,24 +242,34 @@ def main() -> None:
         raise FileNotFoundError(f"No VAE run summaries found under {study_dir / 'runs'}")
 
     df = pd.DataFrame(rows, columns=REQUIRED_COLUMNS)
-    out_local = table_dir / "wrapup_grid_results.csv"
-    out_global = reports_table_dir / "wrapup_grid_results.csv"
+    out_local = table_dir / "grid_results.csv"
+    out_global = reports_table_dir / "grid_results.csv"
     df.to_csv(out_local, index=False)
     df.to_csv(out_global, index=False)
 
-    test_p98 = df[(df["split"] == "test") & (df["threshold_method"] == "train_p98")].copy()
+    aggregated = _aggregate(df)
+    agg_local = table_dir / "grid_aggregated.csv"
+    agg_global = reports_table_dir / "grid_aggregated.csv"
+    aggregated.to_csv(agg_local, index=False)
+    aggregated.to_csv(agg_global, index=False)
+
+    test_p98 = aggregated[
+        (aggregated["split"] == "test") & (aggregated["threshold_method"] == "train_p98")
+    ].copy()
     best = (
-        test_p98.sort_values(["experiment_group", "f1"], ascending=[True, False])
+        test_p98.sort_values(["experiment_group", "f1_mean"], ascending=[True, False])
         .groupby("experiment_group", as_index=False)
         .head(1)
     )
-    best_local = table_dir / "wrapup_grid_best_by_group.csv"
-    best_global = reports_table_dir / "wrapup_grid_best_by_group.csv"
+    best_local = table_dir / "grid_best_by_group.csv"
+    best_global = reports_table_dir / "grid_best_by_group.csv"
     best.to_csv(best_local, index=False)
     best.to_csv(best_global, index=False)
 
     print(f"Saved: {out_local}")
     print(f"Saved: {out_global}")
+    print(f"Saved: {agg_local}")
+    print(f"Saved: {agg_global}")
     print(f"Saved: {best_local}")
     print(f"Saved: {best_global}")
 

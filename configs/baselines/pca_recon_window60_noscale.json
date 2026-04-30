@@ -1,0 +1,15 @@
+{
+  "model_kind": "pca_recon",
+  "window_dir": "dataset/processed_windows/20260430_062154",
+  "output_dir": "models/baseline_runs/pca_recon",
+  "reports_table_dir": "reports/tables",
+  "reports_figure_dir": "reports/figures",
+  "model": {
+    "n_components": 0.95,
+    "random_state": 42
+  },
+  "thresholds": {
+    "train_percentiles": [98, 99, 99.5],
+    "include_val_f1": true
+  }
+}

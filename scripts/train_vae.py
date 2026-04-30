@@ -96,6 +96,7 @@ def main() -> None:
         vae_cfg,
         train_cfg,
         val_windows=train_val_windows,
+        val_labels=val_labels if (use_val_for_training and len(val_windows)) else None,
     )
 
     train_scores = mse_reconstruction_scores(encoder, decoder, train_windows, batch_size=train_cfg.batch_size)

@@ -1,0 +1,18 @@
+{
+  "model_kind": "oc_svm",
+  "window_dir": "dataset/processed_windows/20260430_062154",
+  "output_dir": "models/baseline_runs/oc_svm",
+  "reports_table_dir": "reports/tables",
+  "reports_figure_dir": "reports/figures",
+  "model": {
+    "nu": 0.05,
+    "gamma": "scale",
+    "n_components": 200,
+    "max_train_samples": 30000,
+    "random_state": 42
+  },
+  "thresholds": {
+    "train_percentiles": [98, 99, 99.5],
+    "include_val_f1": true
+  }
+}

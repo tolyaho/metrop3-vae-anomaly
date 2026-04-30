@@ -1,0 +1,6 @@
+model,roc_auc,roc_auc_std,pr_auc,pr_auc_std,n_seeds,source
+"VAE (dense, 3 seeds)",0.997119897596359,0.0003518712974286455,0.8932050429260352,0.01069025617970881,3,models/vae_grid_runs/20260430_074356_wrapup_layers_windows_noscale_beta1
+Isolation Forest,0.9963776935984964,0.0,0.835817623831763,0.0,1,models/baseline_runs/isolation_forest/20260430_063747
+OC-SVM,0.912978454529516,0.0,0.19724496123514362,0.0,1,models/baseline_runs/oc_svm/20260430_063918
+PCA reconstruction,0.7963469163655461,0.0,0.09398377493741301,0.0,1,models/baseline_runs/pca_recon/20260430_063858
+LOF,0.7397212938843231,0.0,0.07174091003562753,0.0,1,models/baseline_runs/lof/20260430_063943

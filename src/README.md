@@ -1,12 +1,15 @@
-# Source Layout
+# Source layout
 
-Reusable project code is grouped by responsibility:
+Reusable project code grouped by responsibility:
 
-- `data/`: MetroPT3 loading, failure labeling, chronological splitting, and
-  window construction.
-- `models/`: VAE architecture, training loop, scoring, threshold helpers, and
-  run persistence.
-- `evaluation/`: shared binary, ROC-AUC, PR-AUC, and anomaly metric helpers.
+- `data/`        - MetroPT3 loading, failure labeling, chronological
+  splitting, sliding-window construction.
+- `models/`      - VAE architecture, training loop, scoring, threshold
+  helpers, run persistence.
+- `baselines/`   - Classical anomaly detection baselines (Isolation
+  Forest, PCA reconstruction, OC-SVM, LOF) operating on the same
+  flattened-window inputs.
+- `evaluation/`  - Binary, ROC-AUC, PR-AUC and anomaly metric helpers.
+- `plotting/`    - Shared matplotlib style and figure-saving helpers.
 
-Top-level modules such as `metrics.py` and `vae_anomaly_detector.py` are kept as
-thin compatibility imports so older scripts and notes continue to work.
+All command-line entry points live in `scripts/`.

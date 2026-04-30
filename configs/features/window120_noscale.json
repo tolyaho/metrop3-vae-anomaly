@@ -1,6 +1,6 @@
 {
   "preprocessed_root": "dataset/preprocessed",
-  "split_run_name": "20260424_005227",
+  "split_run_name": "latest",
   "output_root": "dataset/processed_windows",
   "timestamp_col": "timestamp",
   "label_col": "failure_label",

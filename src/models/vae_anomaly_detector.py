@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -8,8 +9,8 @@ import json
 import numpy as np
 import pandas as pd
 
-# Hide noisy TensorFlow C++ warnings that can look like hard failures.
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+os.environ.setdefault("PYTHONHASHSEED", "0")
 
 import tensorflow as tf
 from tensorflow import keras
@@ -18,6 +19,32 @@ from tensorflow.keras import layers
 from ..evaluation.metrics import binary_metrics, roc_auc_binary
 
 tf.get_logger().setLevel("ERROR")
+
+
+def seed_everything(seed: int, *, enable_op_determinism: bool | None = None) -> None:
+    """Seed Python, NumPy, and TensorFlow for deterministic training.
+
+    By default ``enable_op_determinism`` follows the ``VAE_DETERMINISM``
+    environment variable (``"1"``/``"true"`` to enable, anything else to
+    disable). The flag is **off by default** because forcing deterministic
+    cuDNN kernels can interact poorly with certain weight initialisations
+    on this dataset (the VAE collapses into an inverted-score solution),
+    so we keep the option but do not impose it.
+    """
+    if enable_op_determinism is None:
+        env_val = os.environ.get("VAE_DETERMINISM", "0").strip().lower()
+        enable_op_determinism = env_val in {"1", "true", "yes"}
+
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
+    keras.utils.set_random_seed(seed)
+    if enable_op_determinism:
+        try:
+            tf.config.experimental.enable_op_determinism()
+        except Exception:
+            pass
 
 
 def _serialize_path(path: str | Path) -> str:
@@ -46,11 +73,15 @@ class TrainConfig:
     batch_size: int = 512
     learning_rate: float = 1e-3
     beta: float = 0
-    beta_warmup_epochs: int = 0  # ramp beta from 0→beta over this many epochs; 0 = no warmup
+    beta_warmup_epochs: int = 0  # ramp beta from 0->beta over this many epochs; 0 = no warmup
     validation_split: float = 0
     gradient_clipnorm: float = 1.0
     random_seed: int = 42
     verbose_epoch: bool = True
+    early_stopping_metric: str = "val_roc_auc"  # val_roc_auc | val_total_loss | none
+    early_stopping_patience: int = 5
+    early_stopping_min_epochs: int = 2
+    early_stopping_restore_best: bool = True
 
 
 @dataclass
@@ -168,11 +199,14 @@ def train_vae(
     vae_cfg: VAEConfig,
     train_cfg: TrainConfig,
     val_windows: np.ndarray | None = None,
+    val_labels: np.ndarray | None = None,
 ):
     if len(train_windows) == 0:
-        raise ValueError("No training windows provided. Generate windows first in engineer_feature.ipynb.")
+        raise ValueError(
+            "No training windows provided. Run scripts/build_windows.py first."
+        )
 
-    tf.random.set_seed(train_cfg.random_seed)
+    seed_everything(train_cfg.random_seed)
 
     window_size = train_windows.shape[1]
     n_features = train_windows.shape[2]
@@ -208,6 +242,43 @@ def train_vae(
         "val_total_loss": [],
         "val_recon_loss": [],
         "val_kl_loss": [],
+        "val_roc_auc": [],
+    }
+
+    early_stop_metric = (train_cfg.early_stopping_metric or "none").lower()
+    if early_stop_metric not in {"val_roc_auc", "val_total_loss", "none"}:
+        raise ValueError(
+            f"Unknown early_stopping_metric={early_stop_metric!r}; expected val_roc_auc | val_total_loss | none."
+        )
+    can_track_auc = (
+        val_labels is not None
+        and val_windows is not None
+        and len(val_windows) == len(val_labels)
+        and np.unique(np.asarray(val_labels)).size >= 2
+    )
+    if early_stop_metric == "val_roc_auc" and not can_track_auc:
+        early_stop_metric = "val_total_loss" if val_ds is not None else "none"
+
+    best_metric: float | None = None
+    best_epoch = 0
+    epochs_since_best = 0
+    best_auc: float = -1.0
+    best_auc_epoch = 0
+    best_auc_encoder_weights: list[np.ndarray] | None = None
+    best_auc_decoder_weights: list[np.ndarray] | None = None
+
+    early_stop_info: dict[str, float | int | str | bool] = {
+        "metric": early_stop_metric,
+        "patience": int(train_cfg.early_stopping_patience),
+        "min_epochs": int(train_cfg.early_stopping_min_epochs),
+        "stopped_early": False,
+        "stopped_reason": "",
+        "best_epoch": 0,
+        "best_value": float("nan"),
+        "best_auc_epoch": 0,
+        "best_auc": float("nan"),
+        "restored_from": "",
+        "completed_epochs": 0,
     }
 
     current_beta = tf.Variable(train_cfg.beta, dtype=tf.float32, trainable=False)
@@ -269,6 +340,17 @@ def train_vae(
         tr_kl /= max(1, tr_n)
         tr_total /= max(1, tr_n)
 
+        if can_track_auc and val_ds is not None:
+            val_scores_ep = mse_reconstruction_scores(
+                encoder, decoder, val_windows, batch_size=train_cfg.batch_size
+            )
+            try:
+                va_auc = roc_auc_binary(np.asarray(val_labels, dtype=np.int32), val_scores_ep)
+            except Exception:
+                va_auc = float("nan")
+        else:
+            va_auc = float("nan")
+
         history["epoch"].append(epoch)
         history["train_total_loss"].append(tr_total)
         history["train_recon_loss"].append(tr_recon)
@@ -276,19 +358,59 @@ def train_vae(
         history["val_total_loss"].append(va_total)
         history["val_recon_loss"].append(va_recon)
         history["val_kl_loss"].append(va_kl)
+        history["val_roc_auc"].append(va_auc)
+
+        # Track the best validation AUC across training. Use ``>=`` so we
+        # prefer the LATER epoch on ties / numerical plateaus -- in practice
+        # this gives a more converged model with the same separation power.
+        if can_track_auc and np.isfinite(va_auc) and va_auc >= best_auc - 1e-6:
+            if va_auc > best_auc - 1e-6:
+                best_auc = max(float(va_auc), best_auc)
+                best_auc_epoch = epoch
+                if train_cfg.early_stopping_restore_best:
+                    best_auc_encoder_weights = [w.copy() for w in encoder.get_weights()]
+                    best_auc_decoder_weights = [w.copy() for w in decoder.get_weights()]
+
+        candidate: float | None = None
+        if early_stop_metric == "val_roc_auc" and np.isfinite(va_auc):
+            candidate = float(va_auc)
+            improved = best_metric is None or candidate > best_metric
+        elif early_stop_metric == "val_total_loss" and np.isfinite(va_total):
+            candidate = -float(va_total)
+            improved = best_metric is None or candidate > best_metric
+        else:
+            improved = False
+
+        if improved and candidate is not None:
+            best_metric = candidate
+            best_epoch = epoch
+            epochs_since_best = 0
+        else:
+            epochs_since_best += 1
+
+        # Catastrophic-collapse guard: stop instantly if val AUC drops below
+        # 0.5 after we already saw a high-AUC epoch, restoring the best AUC
+        # weights. This protects against the VAE's known anomaly-easier-to-
+        # reconstruct attractor on this dataset.
+        if can_track_auc and np.isfinite(va_auc) and best_auc > 0.7 and va_auc < 0.5:
+            early_stop_info["stopped_early"] = True
+            early_stop_info["stopped_reason"] = (
+                f"val_roc_auc collapsed to {va_auc:.3f} after peaking at {best_auc:.3f} (epoch {best_auc_epoch})."
+            )
+            if train_cfg.verbose_epoch:
+                print(early_stop_info["stopped_reason"] + " Stopping training.")
+            break
 
         if train_cfg.verbose_epoch:
+            base = (
+                f"Epoch {epoch}/{train_cfg.epochs} - "
+                f"train_total={tr_total:.6f}, train_recon={tr_recon:.6f}, train_kl={tr_kl:.6f}"
+            )
             if np.isfinite(va_total):
-                print(
-                    f"Epoch {epoch}/{train_cfg.epochs} - "
-                    f"train_total={tr_total:.6f}, train_recon={tr_recon:.6f}, train_kl={tr_kl:.6f}, "
-                    f"val_total={va_total:.6f}, val_recon={va_recon:.6f}, val_kl={va_kl:.6f}"
-                )
-            else:
-                print(
-                    f"Epoch {epoch}/{train_cfg.epochs} - "
-                    f"train_total={tr_total:.6f}, train_recon={tr_recon:.6f}, train_kl={tr_kl:.6f}"
-                )
+                base += f", val_total={va_total:.6f}, val_recon={va_recon:.6f}, val_kl={va_kl:.6f}"
+            if np.isfinite(va_auc):
+                base += f", val_roc_auc={va_auc:.4f}"
+            print(base)
 
         if not np.isfinite(tr_total):
             raise ValueError(
@@ -300,6 +422,41 @@ def train_vae(
                 f"Validation loss became non-finite at epoch {epoch}. "
                 "Check validation windows for invalid values and tune learning settings."
             )
+
+        if (
+            early_stop_metric != "none"
+            and epoch >= max(int(train_cfg.early_stopping_min_epochs), 1)
+            and epochs_since_best >= int(train_cfg.early_stopping_patience)
+        ):
+            early_stop_info["stopped_early"] = True
+            early_stop_info["stopped_reason"] = (
+                f"no improvement in {early_stop_metric} for {epochs_since_best} epochs (best epoch {best_epoch})."
+            )
+            if train_cfg.verbose_epoch:
+                print(f"Early stopping at epoch {epoch}: " + early_stop_info["stopped_reason"])
+            break
+
+    # Always restore the best-AUC checkpoint when one was tracked. This
+    # protects the deployed model from the late-stage inversion that this
+    # particular VAE-on-MetroPT3 setup is prone to.
+    restored_from = ""
+    if (
+        train_cfg.early_stopping_restore_best
+        and best_auc_encoder_weights is not None
+        and best_auc_decoder_weights is not None
+        and best_auc_epoch != (history["epoch"][-1] if history["epoch"] else 0)
+    ):
+        encoder.set_weights(best_auc_encoder_weights)
+        decoder.set_weights(best_auc_decoder_weights)
+        restored_from = f"best_auc_epoch={best_auc_epoch} (val_roc_auc={best_auc:.4f})"
+
+    early_stop_info["best_epoch"] = int(best_epoch)
+    early_stop_info["best_value"] = float(best_metric) if best_metric is not None else float("nan")
+    early_stop_info["best_auc_epoch"] = int(best_auc_epoch)
+    early_stop_info["best_auc"] = float(best_auc) if best_auc >= 0 else float("nan")
+    early_stop_info["restored_from"] = restored_from
+    early_stop_info["completed_epochs"] = int(history["epoch"][-1]) if history["epoch"] else 0
+    history["early_stopping"] = early_stop_info
 
     return encoder, decoder, history
 
@@ -579,7 +736,11 @@ def save_training_artifacts(
     encoder.save(run_dir / "encoder.keras")
     decoder.save(run_dir / "decoder.keras")
 
-    pd.DataFrame(history).to_csv(run_dir / "history.csv", index=False)
+    history_table = {k: v for k, v in history.items() if isinstance(v, list)}
+    early_stop_info = history.get("early_stopping", {})
+    pd.DataFrame(history_table).to_csv(run_dir / "history.csv", index=False)
+    if early_stop_info:
+        (run_dir / "early_stopping.json").write_text(json.dumps(early_stop_info, indent=2), encoding="utf-8")
     np.save(run_dir / "train_scores.npy", train_scores)
     np.save(run_dir / "test_scores.npy", test_scores)
     np.save(run_dir / "train_predictions.npy", train_preds)
@@ -619,6 +780,7 @@ def save_training_artifacts(
         "threshold_info": threshold_info or {},
         "threshold": float(threshold),
         "scoring_policy": scoring_policy,
+        "early_stopping": early_stop_info,
         "train_samples": int(len(train_scores)),
         "val_samples": int(len(val_scores)) if val_scores is not None else 0,
         "test_samples": int(len(test_scores)),

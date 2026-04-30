@@ -1,0 +1,39 @@
+{
+  "study_name": "vae_grid",
+  "seed": 42,
+  "seeds": [42, 7, 123],
+  "beta": 1.0,
+  "epochs": 30,
+  "batch_size": 512,
+  "learning_rate": 0.001,
+  "beta_warmup_epochs": 0,
+  "early_stopping_metric": "val_total_loss",
+  "early_stopping_patience": 6,
+  "early_stopping_min_epochs": 4,
+  "early_stopping_restore_best": true,
+  "latent_dim": 16,
+  "scaling": "none",
+  "processed_windows_root": "dataset/processed_windows",
+  "preprocessed_root": "dataset/preprocessed",
+  "split_run_name": "latest",
+  "thresholds": {
+    "train_percentiles": [98, 99, 99.5],
+    "include_val_f1": true
+  },
+  "layer_experiments": [
+    {"id": "layers_64_32", "window_size": 60, "stride": 10, "hidden": [64, 32], "architecture": "dense"},
+    {"id": "layers_128_64", "window_size": 60, "stride": 10, "hidden": [128, 64], "architecture": "dense"},
+    {"id": "layers_256_128", "window_size": 60, "stride": 10, "hidden": [256, 128], "architecture": "dense"},
+    {"id": "layers_128_64_32", "window_size": 60, "stride": 10, "hidden": [128, 64, 32], "architecture": "dense"},
+    {"id": "layers_256_128_64", "window_size": 60, "stride": 10, "hidden": [256, 128, 64], "architecture": "dense"}
+  ],
+  "window_experiments": [
+    {"id": "win30", "window_size": 30, "stride": 5, "hidden": [128, 64], "architecture": "dense"},
+    {"id": "win60", "window_size": 60, "stride": 10, "hidden": [128, 64], "architecture": "dense"},
+    {"id": "win120", "window_size": 120, "stride": 20, "hidden": [128, 64], "architecture": "dense"}
+  ],
+  "architecture_experiments": [
+    {"id": "arch_conv1d", "window_size": 60, "stride": 10, "hidden": [128, 64], "architecture": "conv1d", "seeds": [42, 7]},
+    {"id": "arch_lstm", "window_size": 60, "stride": 10, "hidden": [128, 64], "architecture": "lstm_autoencoder", "seeds": [42]}
+  ]
+}

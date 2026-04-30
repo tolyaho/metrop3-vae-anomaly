@@ -13,6 +13,6 @@ tracked in Git because they are large generated/local artifacts.
 Recreate derived data with:
 
 ```bash
-python scripts/preprocess.py --config configs/data/archive_like_window60.json
+python scripts/preprocess.py --config configs/data/metropt3.json
 python scripts/build_windows.py --config configs/features/window60_noscale.json
 ```
