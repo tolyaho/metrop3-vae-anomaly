@@ -90,3 +90,14 @@ configs/experiments/*noscale_p98.json
 configs/experiments/*noscale_small.json
 configs/experiments/*betawarmup*.json
 configs/experiments/conv1d*noscale.json
+
+final_report_template/
+
+# LaTeX build artifacts (keep report.tex, report.pdf, .sty, .bib, figures/)
+final_report/*.aux
+final_report/*.bbl
+final_report/*.blg
+final_report/*.fdb_latexmk
+final_report/*.fls
+final_report/*.out
+final_report/*.synctex.gz
